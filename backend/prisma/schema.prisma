@@ -1,0 +1,172 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  fullName  String
+  email     String   @unique
+  password  String
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+
+  // Relations
+  orders           Order[]
+  addresses        Address[]
+  reviews          Review[]
+  cart             Cart?
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+}
+
+type MessageContent {
+  type String // file, text
+  text String // path or content
+}
+
+model Message {
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  fromId         String         @db.ObjectId
+  toId           String         @db.ObjectId
+  messageContent MessageContent
+  createdAt      DateTime       @default(now())
+
+  // Relations
+  from User @relation("SentMessages", fields: [fromId], references: [id])
+  to   User @relation("ReceivedMessages", fields: [toId], references: [id])
+}
+
+model Role {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String @unique
+  description String
+}
+
+model Product {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  price       Float
+  stock       Int
+  categoryId  String   @db.ObjectId
+  createdAt   DateTime @default(now())
+
+  // Relations
+  category   Category    @relation(fields: [categoryId], references: [id])
+  inventory  Inventory?
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+  reviews    Review[]
+}
+
+model Category {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String @unique
+  description String
+
+  // Relations
+  products Product[]
+}
+
+model Inventory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId String   @unique @db.ObjectId
+  quantity  Int      // Total physical quantity in warehouse
+  reserved  Int      @default(0) // Currently held in carts/checkout
+  location  String
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  totalAmount Float
+  status      String   @default("PENDING") // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+  payment    Payment?
+}
+
+model OrderItem {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String @db.ObjectId
+  productId String @db.ObjectId
+  quantity  Int
+  price     Float
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Cart {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User       @relation(fields: [userId], references: [id])
+  cartItems CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cartId    String   @db.ObjectId
+  productId String   @db.ObjectId
+  quantity  Int
+  status    String   @default("RESERVED") // RESERVED, EXPIRED, COMPLETED
+  expiresAt DateTime? // TTL for stock reservation
+
+  // Relations
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String   @unique @db.ObjectId
+  amount    Float
+  method    String   // CREDIT_CARD, PAYPAL, COD, BANK_TRANSFER
+  status    String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  createdAt DateTime @default(now())
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Address {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String @db.ObjectId
+  addressLine String
+  city        String
+  district    String
+  ward        String
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  productId String   @db.ObjectId
+  rating    Int      // 1 to 5
+  comment   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}

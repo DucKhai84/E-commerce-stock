@@ -1,0 +1,113 @@
+.mention-input-container {
+  max-width: 600px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+  position: relative;
+}
+
+.editor-wrapper {
+  position: relative;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: white;
+  min-height: 120px;
+  overflow: visible;
+}
+
+.editor-backdrop, .editor-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  box-sizing: border-box;
+  font-family: inherit;
+  border: none;
+  background: transparent;
+  margin: 0;
+}
+
+.editor-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: transparent;
+  caret-color: black;
+  resize: none;
+  outline: none;
+}
+
+.editor-backdrop {
+  color: #333;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.placeholder {
+  color: #999;
+}
+
+.mention-tag {
+  background-color: #e0f2fe;
+  color: #0284c7;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.mention-list {
+  position: absolute;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  width: 250px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.mention-item:last-child {
+  border-bottom: none;
+}
+
+.mention-item:hover,
+.mention-item.selected {
+  background-color: #f8fafc;
+}
+
+.mention-item-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.mention-item-username {
+  font-size: 14px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.debug-data {
+  margin-top: 20px;
+  background: #1e293b;
+  color: #10b981;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.debug-data pre {
+  margin: 0;
+  font-size: 13px;
+}
