@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import MentionInput from './MentionInput';
+import { useAuth } from '../context/AuthContext';
+import { Trash2 } from 'lucide-react';
 
 const ReviewForm = ({ productId, onSubmitSuccess }) => {
     const [rating, setRating] = useState(5);
@@ -45,22 +48,11 @@ const ReviewForm = ({ productId, onSubmitSuccess }) => {
                 </div>
 
                 <div style={{ position: 'relative', marginBottom: '20px' }}>
-                    <textarea
+                    <MentionInput
                         value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        placeholder="Chia sẻ cảm nhận của bạn về sản phẩm này..."
-                        style={{
-                            width: '100%',
-                            minHeight: '100px',
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '12px',
-                            color: '#fff',
-                            padding: '16px',
-                            fontSize: '15px',
-                            outline: 'none',
-                            resize: 'vertical'
-                        }}
+                        onChange={setComment}
+                        placeholder="Chia sẻ cảm nhận của bạn về sản phẩm này... (Gõ @ để nhắc tên)"
+                        disabled={submitting}
                     />
                 </div>
 
@@ -80,7 +72,10 @@ const ReviewForm = ({ productId, onSubmitSuccess }) => {
     );
 };
 
-const ReviewItem = ({ review }) => {
+const ReviewItem = ({ review, onDelete }) => {
+    const { user } = useAuth();
+    const canDelete = user && (user.role === 'ADMIN' || user.userId === review.userId);
+
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('vi-VN', {
@@ -93,7 +88,7 @@ const ReviewItem = ({ review }) => {
     };
 
     return (
-        <div className="glass-panel" style={{ padding: '20px', marginBottom: '16px', display: 'flex', gap: '16px' }}>
+        <div className="glass-panel" style={{ padding: '20px', marginBottom: '16px', display: 'flex', gap: '16px', position: 'relative' }}>
             <div style={{
                 width: '40px',
                 height: '40px',
@@ -110,7 +105,18 @@ const ReviewItem = ({ review }) => {
             <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{ fontWeight: '600' }}>{review.user?.fullName}</span>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{formatDate(review.createdAt)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{formatDate(review.createdAt)}</span>
+                        {canDelete && (
+                            <button
+                                onClick={() => onDelete(review.id)}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                title="Xóa đánh giá"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '2px', marginBottom: '10px' }}>
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -125,7 +131,7 @@ const ReviewItem = ({ review }) => {
     );
 };
 
-const ReviewSection = ({ productId, reviews, onNewReview }) => {
+const ReviewSection = ({ productId, reviews, onNewReview, onDeleteReview }) => {
     return (
         <div style={{ marginTop: '64px' }}>
             <h2 style={{ marginBottom: '32px', fontSize: '28px' }} className="gradient-text">Đánh giá từ khách hàng</h2>
@@ -134,7 +140,13 @@ const ReviewSection = ({ productId, reviews, onNewReview }) => {
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {reviews.length > 0 ? (
-                    reviews.map((rev) => <ReviewItem key={rev.id} review={rev} />)
+                    reviews.map((rev) => (
+                        <ReviewItem
+                            key={rev.id}
+                            review={rev}
+                            onDelete={onDeleteReview}
+                        />
+                    ))
                 ) : (
                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                         Chưa có đánh giá nào. Hãy là người đầu tiên nhận xét sản phẩm này!

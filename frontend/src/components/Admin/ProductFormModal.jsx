@@ -12,6 +12,8 @@ const ProductFormModal = ({ isOpen, onClose, onSubmit, initialData, isLoading })
         categoryId: ''
     });
 
+    const [imageFile, setImageFile] = useState(null);
+    const [preview, setPreview] = useState('');
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
@@ -19,7 +21,6 @@ const ProductFormModal = ({ isOpen, onClose, onSubmit, initialData, isLoading })
             // Tải danh mục mỗi khi mở nắp Modal
             AppApi.getCategories().then(setCategories).catch((err) => {
                 console.warn("Không thể tải Category:", err);
-                setCategories([{ id: 'mock-cat-1', name: 'Điện thoại (Mạng giả lập)' }, { id: 'mock-cat-2', name: 'Laptop (Mạng giả lập)' }]);
             });
 
             if (initialData) {
@@ -30,14 +31,31 @@ const ProductFormModal = ({ isOpen, onClose, onSubmit, initialData, isLoading })
                     stock: initialData.stock || '',
                     categoryId: initialData.categoryId || (initialData.category?.id) || ''
                 });
+                setPreview(initialData.imageUrl ? `http://localhost:3000${initialData.imageUrl}` : '');
             } else {
                 setFormData({ name: '', description: '', price: '', stock: '', categoryId: '' });
+                setPreview('');
             }
+            setImageFile(null);
             setErrors({});
         }
+
+        return () => {
+            if (preview && preview.startsWith('blob:')) {
+                URL.revokeObjectURL(preview);
+            }
+        };
     }, [initialData, isOpen]);
 
     if (!isOpen) return null;
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageFile(file);
+            setPreview(URL.createObjectURL(file));
+        }
+    };
 
     const validate = () => {
         const newErrors = {};
@@ -45,6 +63,7 @@ const ProductFormModal = ({ isOpen, onClose, onSubmit, initialData, isLoading })
         if (!formData.price || Number(formData.price) <= 0) newErrors.price = 'Giá sản phẩm phải lớn hơn 0';
         if (formData.stock === '' || Number(formData.stock) < 0) newErrors.stock = 'Tồn kho không được nhỏ hơn 0';
         if (!formData.categoryId) newErrors.categoryId = 'Xin hãy chọn một phân loại danh mục';
+        if (!initialData && !imageFile) newErrors.image = 'Vui lòng chọn ảnh sản phẩm';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -52,11 +71,16 @@ const ProductFormModal = ({ isOpen, onClose, onSubmit, initialData, isLoading })
     const handleSubmit = (e) => {
         e.preventDefault();
         if (validate()) {
-            onSubmit({
-                ...formData,
-                price: Number(formData.price),
-                stock: Number(formData.stock)
-            });
+            const data = new FormData();
+            data.append('name', formData.name);
+            data.append('description', formData.description);
+            data.append('price', formData.price);
+            data.append('stock', formData.stock);
+            data.append('categoryId', formData.categoryId);
+            if (imageFile) {
+                data.append('image', imageFile);
+            }
+            onSubmit(data);
         }
     };
 
@@ -114,8 +138,8 @@ const ProductFormModal = ({ isOpen, onClose, onSubmit, initialData, isLoading })
                         <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Phân Loại Danh Mục *</label>
                         <select
                             className="input-field"
-                            style={{ padding: '12px', '-webkit-appearance': 'none' }}
-                            value={formData.categoryId}
+                            style={{ padding: '12px', WebkitAppearance: 'none' }}
+                            value={formData?.categoryId || ''}
                             onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                             disabled={isLoading}
                         >
@@ -125,6 +149,40 @@ const ProductFormModal = ({ isOpen, onClose, onSubmit, initialData, isLoading })
                             ))}
                         </select>
                         {errors.categoryId && <span style={{ color: '#ef4444', fontSize: '13px' }}>{errors.categoryId}</span>}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Ảnh Sản Phẩm *</label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFileChange}
+                                style={{ display: 'none' }}
+                                id="product-image-upload"
+                                disabled={isLoading}
+                            />
+                            <label
+                                htmlFor="product-image-upload"
+                                className="input-field"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    borderStyle: 'dashed',
+                                    height: '120px'
+                                }}
+                            >
+                                {imageFile ? 'Đổi ảnh khác' : 'Chọn ảnh sản phẩm'}
+                            </label>
+                            {errors.image && <span style={{ color: '#ef4444', fontSize: '13px' }}>{errors.image}</span>}
+                        </div>
+                        {preview && (
+                            <div style={{ width: '120px', height: '120px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <img src={preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                        )}
                     </div>
 
                     <div>

@@ -40,14 +40,34 @@ const getProductById = async (id) => {
   return product;
 };
 
-const createProduct = async (productData) => {
-  if (productData.price <= 0) {
-    throw new Error('Price must be greater than zero');
+const createProduct = async (productData = {}) => {
+  // Safe destructuring with defaults
+  const { name, price, stock, description = '', categoryId, imageUrl } = productData;
+
+  if (!name) {
+    throw new Error('Tên sản phẩm không được để trống');
   }
+
+  // Pre-validate numbers
+  const numPrice = parseFloat(price);
+  if (isNaN(numPrice) || numPrice <= 0) {
+    throw new Error('Đơn giá sản phẩm (price) không hợp lệ - phải là số lớn hơn 0');
+  }
+
+  const numStock = parseInt(stock) || 0;
+
+  console.log(`[ProductService] Đang tạo mới SP: "${name}", Giá: ${numPrice}, Kho: ${numStock}`);
 
   return await prisma.$transaction(async (tx) => {
     const product = await tx.product.create({
-      data: productData
+      data: {
+        name: String(name),
+        price: numPrice,
+        stock: numStock,
+        description: String(description || ''),
+        categoryId: String(categoryId),
+        imageUrl: imageUrl ? String(imageUrl) : null
+      }
     });
 
     // Automatically create inventory record
@@ -63,10 +83,26 @@ const createProduct = async (productData) => {
   });
 };
 
-const updateProduct = async (id, productData) => {
+const updateProduct = async (id, productData = {}) => {
+  const { price, stock, id: _tempId, _id, ...rest } = productData;
+  const updateData = { ...rest };
+
+  if (price !== undefined && price !== null && price !== '') {
+    updateData.price = parseFloat(price);
+  }
+
+  if (stock !== undefined && stock !== null && stock !== '') {
+    updateData.stock = parseInt(stock);
+  }
+
+  // Pre-clean data for Prisma
+  if (updateData.categoryId) updateData.categoryId = String(updateData.categoryId);
+
+  console.log(`[ProductService] Updating ${id} with:`, JSON.stringify(updateData, null, 2));
+
   return await prisma.product.update({
     where: { id },
-    data: productData
+    data: updateData
   });
 };
 

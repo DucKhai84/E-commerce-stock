@@ -44,6 +44,17 @@ const ProductDetail = () => {
         }
     };
 
+    const handleDeleteReview = async (reviewId) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa đánh giá này?")) return;
+        try {
+            await AppApi.deleteReview(id, reviewId);
+            toast.success("Đã xóa đánh giá thành công", "Hệ thống");
+            await fetchProduct();
+        } catch (err) {
+            toast.error(err.message || "Không thể xóa đánh giá.");
+        }
+    };
+
     if (loading) return <div style={{ marginTop: '40px' }}>Đang nạp chi tiết sản phẩm...</div>;
 
     if (!product) return (
@@ -58,8 +69,12 @@ const ProductDetail = () => {
             <Link to="/" style={{ color: 'var(--accent)', marginBottom: '20px', display: 'inline-block' }}>← Quay lại danh mục</Link>
 
             <div className="glass-panel" style={{ padding: '40px', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 400px', minHeight: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '64px' }}>
-                    💻
+                <div style={{ flex: '1 1 400px', minHeight: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '64px', overflow: 'hidden' }}>
+                    {product.imageUrl ? (
+                        <img src={`http://localhost:3000${product.imageUrl}`} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                        "💻"
+                    )}
                 </div>
 
                 <div style={{ flex: '1 1 400px' }}>
@@ -84,6 +99,7 @@ const ProductDetail = () => {
                 productId={id}
                 reviews={product.reviews || []}
                 onNewReview={handleNewReview}
+                onDeleteReview={handleDeleteReview}
             />
         </div>
     );

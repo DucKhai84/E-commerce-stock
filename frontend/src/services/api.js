@@ -3,8 +3,10 @@ const BASE_URL = 'http://localhost:3000/api/v1';
 export const apiCall = async (endpoint, options = {}) => {
     const token = localStorage.getItem('token');
 
+    const isFormData = options.body instanceof FormData;
+
     const headers = {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
     };
@@ -47,8 +49,36 @@ export const AppApi = {
 
     getProducts: () => apiCall('/products', { method: 'GET' }),
     getProductById: (id) => apiCall(`/products/${id}`, { method: 'GET' }),
-    createProduct: (data) => apiCall('/products', { method: 'POST', body: JSON.stringify(data) }),
-    updateProduct: (id, data) => apiCall(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    createProduct: (data) => apiCall('/products', { method: 'POST', body: data }),
+    updateProduct: async (id, data) => {
+        let finalBody = data;
+        let pObj = {};
+        let isMulti = false;
+
+        if (data instanceof FormData) {
+            for (let [k, v] of data.entries()) {
+                if (v instanceof File) {
+                    isMulti = true;
+                    pObj[k] = v;
+                } else if (k === 'price') {
+                    pObj[k] = parseFloat(v);
+                } else if (k === 'stock') {
+                    pObj[k] = parseInt(v);
+                } else {
+                    pObj[k] = v;
+                }
+            }
+
+            if (!isMulti) {
+                finalBody = JSON.stringify(pObj);
+            }
+        }
+
+        return apiCall(`/products/${id}`, {
+            method: 'PUT',
+            body: finalBody
+        });
+    },
     deleteProduct: (id) => apiCall(`/products/${id}`, { method: 'DELETE' }),
 
     // Addresses
@@ -67,6 +97,7 @@ export const AppApi = {
     // Reviews
     getReviews: (productId) => apiCall(`/products/${productId}/reviews`, { method: 'GET' }),
     addReview: (productId, data) => apiCall(`/products/${productId}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
+    deleteReview: (productId, reviewId) => apiCall(`/products/${productId}/reviews/${reviewId}`, { method: 'DELETE' }),
 
     // Mention search
     searchUsers: (query) => apiCall(`/users?q=${encodeURIComponent(query)}`, { method: 'GET' })
