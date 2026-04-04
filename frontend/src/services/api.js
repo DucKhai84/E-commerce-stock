@@ -50,7 +50,35 @@ export const AppApi = {
     getProducts: () => apiCall('/products', { method: 'GET' }),
     getProductById: (id) => apiCall(`/products/${id}`, { method: 'GET' }),
     createProduct: (data) => apiCall('/products', { method: 'POST', body: data }),
-    updateProduct: (id, data) => apiCall(`/products/${id}`, { method: 'PUT', body: data }),
+    updateProduct: async (id, data) => {
+        let finalBody = data;
+        let pObj = {};
+        let isMulti = false;
+
+        if (data instanceof FormData) {
+            for (let [k, v] of data.entries()) {
+                if (v instanceof File) {
+                    isMulti = true;
+                    pObj[k] = v;
+                } else if (k === 'price') {
+                    pObj[k] = parseFloat(v);
+                } else if (k === 'stock') {
+                    pObj[k] = parseInt(v);
+                } else {
+                    pObj[k] = v;
+                }
+            }
+
+            if (!isMulti) {
+                finalBody = JSON.stringify(pObj);
+            }
+        }
+
+        return apiCall(`/products/${id}`, {
+            method: 'PUT',
+            body: finalBody
+        });
+    },
     deleteProduct: (id) => apiCall(`/products/${id}`, { method: 'DELETE' }),
 
     // Addresses

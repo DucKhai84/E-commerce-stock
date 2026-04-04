@@ -49,6 +49,7 @@ const updateProduct = async (req, res) => {
       productData.imageUrl = `/uploads/products/${req.file.filename}`;
     }
 
+    console.log('[ProductController] Final Product Data to Service:', productData);
     const product = await productService.updateProduct(req.params.id, productData);
     res.status(200).json(product);
   } catch (error) {

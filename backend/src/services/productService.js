@@ -61,12 +61,12 @@ const createProduct = async (productData = {}) => {
   return await prisma.$transaction(async (tx) => {
     const product = await tx.product.create({
       data: {
-        name,
+        name: String(name),
         price: numPrice,
         stock: numStock,
-        description,
-        categoryId,
-        imageUrl
+        description: String(description || ''),
+        categoryId: String(categoryId),
+        imageUrl: imageUrl ? String(imageUrl) : null
       }
     });
 
@@ -84,11 +84,21 @@ const createProduct = async (productData = {}) => {
 };
 
 const updateProduct = async (id, productData = {}) => {
-  const { price, stock, ...rest } = productData;
+  const { price, stock, id: _tempId, _id, ...rest } = productData;
   const updateData = { ...rest };
 
-  if (price !== undefined) updateData.price = parseFloat(price);
-  if (stock !== undefined) updateData.stock = parseInt(stock);
+  if (price !== undefined && price !== null && price !== '') {
+    updateData.price = parseFloat(price);
+  }
+
+  if (stock !== undefined && stock !== null && stock !== '') {
+    updateData.stock = parseInt(stock);
+  }
+
+  // Pre-clean data for Prisma
+  if (updateData.categoryId) updateData.categoryId = String(updateData.categoryId);
+
+  console.log(`[ProductService] Updating ${id} with:`, JSON.stringify(updateData, null, 2));
 
   return await prisma.product.update({
     where: { id },
