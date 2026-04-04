@@ -32,7 +32,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="layout-container nav-content">
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <Link to="/" className="nav-brand gradient-text">NNPTUD.Store</Link>
+          <Link to="/" className="nav-brand gradient-text">Tech Store</Link>
           {user?.role === 'ADMIN' && (
             <div style={{ display: 'flex', gap: '10px' }}>
               <Link to="/admin/categories" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '6px 12px', borderRadius: '20px', textDecoration: 'none' }}>

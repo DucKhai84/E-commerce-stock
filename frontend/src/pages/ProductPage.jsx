@@ -57,27 +57,37 @@ const ProductPage = () => {
 
     const handleFormSubmit = async (formData) => {
         setIsSubmitting(true);
+        // Extracts for display/mocking even if it's FormData
+        const productName = formData instanceof FormData ? formData.get('name') : formData.name;
+
         try {
             if (selectedProduct) {
                 await AppApi.updateProduct(selectedProduct.id, formData);
-                toast.success(`Đã cập nhật hàng hóa: ${formData.name}`, 'Lưu Thành Công');
+                toast.success(`Đã cập nhật hàng hóa: ${productName}`, 'Lưu Thành Công');
             } else {
                 await AppApi.createProduct(formData);
-                toast.success(`Đã bổ sung ${formData.name} vào kho!`, 'Nhập Kho Thành Công');
+                toast.success(`Đã bổ sung ${productName} vào kho!`, 'Nhập Kho Thành Công');
             }
             setFormModalOpen(false);
             loadProducts();
         } catch (err) {
             toast.error(err.message || 'Nhập kho thất bại do máy chủ từ chối', 'Cảnh Báo');
 
-            // Mock flow
+            // Handle Offline Mock (convert fields from FormData if needed)
+            const plainData = {};
+            if (formData instanceof FormData) {
+                formData.forEach((value, key) => { plainData[key] = value; });
+            } else {
+                Object.assign(plainData, formData);
+            }
+
             if (!selectedProduct) {
                 toast.info("Đã tạo mới trên bộ nhớ giả lập (Offline Mode).");
-                setProducts([{ id: Date.now().toString(), ...formData, category: { name: 'Tự chọn (Giả lập)' } }, ...products]);
+                setProducts([{ id: Date.now().toString(), ...plainData, category: { name: 'Tự chọn (Giả lập)' } }, ...products]);
                 setFormModalOpen(false);
             } else {
                 toast.info("Đã cập nhật trên bộ nhớ giả lập (Offline Mode).");
-                setProducts(products.map(p => p.id === selectedProduct.id ? { ...p, ...formData, category: p.category || { name: 'Tự chọn' } } : p));
+                setProducts(products.map(p => p.id === selectedProduct.id ? { ...p, ...plainData, category: p.category || { name: 'Tự chọn' } } : p));
                 setFormModalOpen(false);
             }
         } finally {

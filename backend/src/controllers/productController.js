@@ -21,18 +21,38 @@ const getProductById = async (req, res) => {
 
 const createProduct = async (req, res) => {
   try {
-    const product = await productService.createProduct(req.body);
+    console.log('[ProductController] Body nhận được:', req.body);
+    console.log('[ProductController] File nhận được:', req.file ? req.file.filename : 'Không có');
+
+    const productData = req.body || {};
+
+    if (req.file) {
+      productData.imageUrl = `/uploads/products/${req.file.filename}`;
+    }
+
+    const product = await productService.createProduct(productData);
     res.status(201).json(product);
   } catch (error) {
+    console.error('[ProductController Error]', error.message);
     res.status(400).json({ message: error.message });
   }
 };
 
 const updateProduct = async (req, res) => {
   try {
-    const product = await productService.updateProduct(req.params.id, req.body);
+    console.log(`[ProductController] Đang cập nhật SP ID: ${req.params.id}`);
+    console.log('[ProductController] Body nhận được:', req.body);
+
+    const productData = req.body || {};
+
+    if (req.file) {
+      productData.imageUrl = `/uploads/products/${req.file.filename}`;
+    }
+
+    const product = await productService.updateProduct(req.params.id, productData);
     res.status(200).json(product);
   } catch (error) {
+    console.error('[ProductController Update Error]', error.message);
     res.status(400).json({ message: error.message });
   }
 };

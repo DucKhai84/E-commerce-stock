@@ -40,14 +40,34 @@ const getProductById = async (id) => {
   return product;
 };
 
-const createProduct = async (productData) => {
-  if (productData.price <= 0) {
-    throw new Error('Price must be greater than zero');
+const createProduct = async (productData = {}) => {
+  // Safe destructuring with defaults
+  const { name, price, stock, description = '', categoryId, imageUrl } = productData;
+
+  if (!name) {
+    throw new Error('Tên sản phẩm không được để trống');
   }
+
+  // Pre-validate numbers
+  const numPrice = parseFloat(price);
+  if (isNaN(numPrice) || numPrice <= 0) {
+    throw new Error('Đơn giá sản phẩm (price) không hợp lệ - phải là số lớn hơn 0');
+  }
+
+  const numStock = parseInt(stock) || 0;
+
+  console.log(`[ProductService] Đang tạo mới SP: "${name}", Giá: ${numPrice}, Kho: ${numStock}`);
 
   return await prisma.$transaction(async (tx) => {
     const product = await tx.product.create({
-      data: productData
+      data: {
+        name,
+        price: numPrice,
+        stock: numStock,
+        description,
+        categoryId,
+        imageUrl
+      }
     });
 
     // Automatically create inventory record
@@ -63,10 +83,16 @@ const createProduct = async (productData) => {
   });
 };
 
-const updateProduct = async (id, productData) => {
+const updateProduct = async (id, productData = {}) => {
+  const { price, stock, ...rest } = productData;
+  const updateData = { ...rest };
+
+  if (price !== undefined) updateData.price = parseFloat(price);
+  if (stock !== undefined) updateData.stock = parseInt(stock);
+
   return await prisma.product.update({
     where: { id },
-    data: productData
+    data: updateData
   });
 };
 

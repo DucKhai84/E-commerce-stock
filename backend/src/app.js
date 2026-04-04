@@ -12,6 +12,7 @@ const addressRoutes = require('./routes/addressRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const authMiddleware = require('./middlewares/auth.middleware');
+const path = require('path');
 
 const app = express();
 
@@ -20,6 +21,9 @@ app.use(cors());
 
 // Middleware to parse JSON
 app.use(express.json());
+
+// Serve static files from uploads folder
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/v1/auth', authRoutes);

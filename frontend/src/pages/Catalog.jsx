@@ -35,8 +35,12 @@ const Catalog = () => {
             <div className="product-grid">
                 {products.map(product => (
                     <div key={product.id} className="glass-panel product-card">
-                        <div className="product-image-placeholder">
-                            📦
+                        <div className="product-image-placeholder" style={{ overflow: 'hidden' }}>
+                            {product.imageUrl ? (
+                                <img src={`http://localhost:3000${product.imageUrl}`} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                "📦"
+                            )}
                         </div>
                         <h3 className="product-title">{product.name}</h3>
                         <p className="product-desc">{product.description}</p>

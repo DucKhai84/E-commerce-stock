@@ -54,6 +54,7 @@ model Product {
   description String
   price       Float
   stock       Int
+  imageUrl    String?
   categoryId  String   @db.ObjectId
   createdAt   DateTime @default(now())
 

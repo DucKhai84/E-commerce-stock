@@ -20,6 +20,7 @@ const ProductTable = ({ products, onEdit, onDelete, isLoading }) => {
             <table className="admin-table">
                 <thead>
                     <tr>
+                        <th style={{ width: '80px' }}>Ảnh</th>
                         <th>Tên Sản Phẩm</th>
                         <th>Loại</th>
                         <th>Đơn Giá</th>
@@ -30,6 +31,15 @@ const ProductTable = ({ products, onEdit, onDelete, isLoading }) => {
                 <tbody>
                     {products.map((prod) => (
                         <tr key={prod.id}>
+                            <td>
+                                <div style={{ width: '50px', height: '50px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {prod.imageUrl ? (
+                                        <img src={`http://localhost:3000${prod.imageUrl}`} alt={prod.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <span style={{ fontSize: '20px' }}>📦</span>
+                                    )}
+                                </div>
+                            </td>
                             <td style={{ fontWeight: 500, color: 'var(--text-main)' }}>{prod.name}</td>
                             <td style={{ color: 'var(--text-muted)' }}>{prod.category?.name || 'Khác'}</td>
                             <td style={{ color: '#10b981', fontWeight: 600 }}>${prod.price}</td>
