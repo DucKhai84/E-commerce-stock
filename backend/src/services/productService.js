@@ -100,9 +100,21 @@ const updateProduct = async (id, productData = {}) => {
 
   console.log(`[ProductService] Updating ${id} with:`, JSON.stringify(updateData, null, 2));
 
-  return await prisma.product.update({
-    where: { id },
-    data: updateData
+  return await prisma.$transaction(async (tx) => {
+    const product = await tx.product.update({
+      where: { id },
+      data: updateData
+    });
+
+    // Sync Inventory.quantity when stock is updated
+    if (updateData.stock !== undefined) {
+      await tx.inventory.updateMany({
+        where: { productId: id },
+        data: { quantity: updateData.stock }
+      });
+    }
+
+    return product;
   });
 };
 
@@ -123,7 +135,12 @@ const deleteProduct = async (id) => {
       where: { productId: id }
     });
 
-    // 4. Finally delete the product
+    // 4. Delete dependent OrderItems
+    await tx.orderItem.deleteMany({
+      where: { productId: id }
+    });
+
+    // 5. Finally delete the product
     return await tx.product.delete({
       where: { id }
     });
