@@ -31,8 +31,18 @@ const getLogById = async (id) => {
     });
 };
 
+const deleteLog = async (id) => {
+    return await prisma.activityLog.delete({ where: { id } });
+};
+
+const clearLogs = async () => {
+    return await prisma.activityLog.deleteMany({});
+};
+
 module.exports = {
     createLog,
     getAllLogs,
-    getLogById
+    getLogById,
+    deleteLog,
+    clearLogs
 };

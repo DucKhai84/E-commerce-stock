@@ -45,6 +45,25 @@ const updatePaymentStatus = async (orderId, status, requestingUser) => {
   });
 };
 
+const getAllPayments = async () => {
+  return await prisma.payment.findMany({
+    include: {
+      order: {
+        include: {
+          user: { select: { fullName: true, email: true } }
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+};
+
+const deletePayment = async (orderId) => {
+  return await prisma.payment.delete({
+    where: { orderId }
+  });
+};
+
 const createVnpayUrl = async (orderId, ipAddr) => {
   const order = await prisma.order.findUnique({
     where: { id: orderId }
@@ -209,5 +228,7 @@ module.exports = {
   getPaymentByOrderId,
   updatePaymentStatus,
   createVnpayUrl,
-  vnpayReturn
+  vnpayReturn,
+  getAllPayments,
+  deletePayment
 };

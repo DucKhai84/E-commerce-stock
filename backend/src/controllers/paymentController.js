@@ -19,6 +19,24 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
+const getAllPayments = async (req, res) => {
+  try {
+    const payments = await paymentService.getAllPayments();
+    res.status(200).json(payments);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const deletePayment = async (req, res) => {
+  try {
+    await paymentService.deletePayment(req.params.orderId);
+    res.status(200).json({ message: 'Payment deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 const createVnpayUrl = async (req, res) => {
   try {
     const { orderId } = req.body;
@@ -54,5 +72,7 @@ module.exports = {
   getPaymentByOrderId,
   updatePaymentStatus,
   createVnpayUrl,
-  vnpayReturn
+  vnpayReturn,
+  getAllPayments,
+  deletePayment
 };
