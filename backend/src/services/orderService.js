@@ -26,6 +26,20 @@ const getAllOrders = async (requestingUser) => {
   });
 };
 
+const getMyOrders = async (requestingUser) => {
+  return await prisma.order.findMany({
+    where: { userId: requestingUser.id },
+    include: {
+      orderItems: {
+        include: {
+          product: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+};
+
 const getOrderById = async (id, requestingUser) => {
   const order = await prisma.order.findUnique({
     where: { id },
@@ -101,11 +115,14 @@ const createOrder = async (orderData, requestingUser) => {
     }
 
     // 2. Create the order
+    const expiresAt = paymentMethod === 'COD' ? null : new Date(Date.now() + 15 * 60 * 1000);
+
     const order = await tx.order.create({
       data: {
         userId,
         totalAmount: parseFloat(calculatedTotal.toFixed(2)), // Enforce float
         status: 'PENDING',
+        expiresAt: expiresAt,
         orderItems: {
           create: orderItems.map(item => ({
             productId: item.productId,
@@ -127,37 +144,40 @@ const createOrder = async (orderData, requestingUser) => {
       }
     });
 
-    // 4. Stock Management
-    if (paymentMethod === 'COD') {
-      // For COD, we reduce physical stock immediately
-      for (const item of orderItems) {
-        // Reduce Physical Stock in Product
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } }
-        });
+    // 4. Stock Management: Subtract physical stock immediately for ALL methods
+    for (const item of orderItems) {
+      const inventory = await tx.inventory.findUnique({ where: { productId: item.productId } });
+      if (!inventory) throw new Error(`Inventory record not found for product ${item.productId}`);
 
-        // Reduce Physical Quantity and Release Reserved in Inventory
-        await tx.inventory.update({
-          where: { productId: item.productId },
-          data: {
-            quantity: { decrement: item.quantity }, // Permanent reduction
-            reserved: { decrement: item.quantity }  // Release hold
-          }
-        });
+      const available = inventory.quantity - inventory.reserved;
+      if (available < item.quantity) {
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        throw new Error(`Insufficient stock for "${product?.name || item.productId}". Available: ${available}, Required: ${item.quantity}`);
       }
-    } else {
-      // For VNPAY/Online: We DO NOT reduce physical quantity yet.
-      // We keep the stock 'reserved' until payment success or failure.
-      // Since cartItem is about to be deleted, the inventory.reserved count 
-      // already includes these items (added during addToCart).
-      console.log(`[OrderService] VNPAY order ${order.id}: Keeping stock reserved until payment.`);
+
+      // Reduce Physical Stock in Product
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { decrement: item.quantity } }
+      });
+
+      // Reduce Physical Quantity and increase Reserved in Inventory
+      await tx.inventory.update({
+        where: { productId: item.productId },
+        data: {
+          quantity: { decrement: item.quantity }, // Physical deduction
+          reserved: { increment: item.quantity }  // Hold for the timeout
+        }
+      });
     }
 
-    // 5. Clear the user's reserved items
-    await tx.cartItem.deleteMany({
-      where: { cartId: userCart.id, status: 'RESERVED' }
-    });
+    // 5. Clear the user's reserved items from cart
+    const userCartRecord = await tx.cart.findUnique({ where: { userId } });
+    if (userCartRecord) {
+      await tx.cartItem.deleteMany({
+        where: { cartId: userCartRecord.id }
+      });
+    }
 
     return order;
   });
@@ -179,19 +199,11 @@ const finalizeOrderPayment = async (orderId) => {
 
     if (!order || order.status === 'PAID') return order;
 
-    // Finalize Stock: Reduce Physical Quantity and Release Reserved
+    // Finalize Stock: Just Release Reserved (Physical was reduced in createOrder)
     for (const item of order.orderItems) {
-      // Reduce Physical Stock in Product
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } }
-      });
-
-      // Reduce Physical Quantity and Release Reserved in Inventory
       await tx.inventory.update({
         where: { productId: item.productId },
         data: {
-          quantity: { decrement: item.quantity }, // Permanent reduction
           reserved: { decrement: item.quantity }  // Release hold
         }
       });
@@ -204,37 +216,35 @@ const finalizeOrderPayment = async (orderId) => {
   });
 };
 
-const failOrder = async (orderId) => {
+const failOrder = async (orderId, status = 'FAILED') => {
   return await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: { orderItems: true, payment: true }
     });
 
-    if (!order || order.status === 'FAILED') return order;
+    if (!order || order.status === 'FAILED' || order.status === 'EXPIRED') return order;
 
-    // For VNPAY/Online: If payment failed, we ONLY release the reserved stock.
-    // (Because physical quantity wasn't reduced yet in createOrder for VNPAY).
-    // EXCEPT if it was COD (but COD usually doesn't fail this way).
+    // Global Rollback: Return physical stock for ANY order that fails/expires
+    for (const item of order.orderItems) {
+      // Return Physical Stock
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } }
+      });
 
-    if (order.payment?.method !== 'COD') {
-      for (const item of order.orderItems) {
-        await tx.inventory.update({
-          where: { productId: item.productId },
-          data: { reserved: { decrement: item.quantity } }
-        });
-      }
-    } else {
-      // Rollback COD (Rarely used in this flow but kept for safety)
-      for (const item of order.orderItems) {
-        await tx.product.update({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
-        await tx.inventory.update({ where: { productId: item.productId }, data: { quantity: { increment: item.quantity }, reserved: { increment: item.quantity } } });
-      }
+      await tx.inventory.update({
+        where: { productId: item.productId },
+        data: {
+          quantity: { increment: item.quantity }, // Restore physical
+          reserved: { decrement: item.quantity }  // Release hold
+        }
+      });
     }
 
     return await tx.order.update({
       where: { id: orderId },
-      data: { status: 'FAILED' }
+      data: { status }
     });
   });
 };
@@ -257,6 +267,59 @@ const deleteOrder = async (id, requestingUser) => {
   });
 };
 
+
+
+const reserveOrderForPayment = async (orderId) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get the order with items
+    const order = await tx.order.findUnique({
+      where: { id: orderId }
+    });
+
+    if (!order) throw new Error('Không tìm thấy đơn hàng');
+
+    // If it's already RESERVED and not expired, just return.
+    if (order.status === 'RESERVED') {
+      if (order.expiresAt && order.expiresAt > new Date()) return order;
+    }
+
+    if (order.status !== 'PENDING' && order.status !== 'RESERVED') {
+      throw new Error(`Chỉ có thể thanh toán đơn hàng đang chờ hoặc đang giữ chỗ (PENDING/RESERVED), trạng thái hiện tại: ${order.status}`);
+    }
+
+    // 2. Set new Payment Window (10 mins)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    console.log(`[OrderService] Activating 10-min payment window for Order #${orderId.substring(0, 8)}.`);
+
+    return await tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'RESERVED',
+        expiresAt: expiresAt
+      }
+    });
+  });
+};
+
+const releaseExpiredOrders = async () => {
+  const expiredOrders = await prisma.order.findMany({
+    where: {
+      status: { in: ['PENDING', 'RESERVED'] },
+      expiresAt: { lt: new Date() }
+    }
+  });
+
+  if (expiredOrders.length === 0) return;
+
+  console.log(`[OrderService] Found ${expiredOrders.length} expired orders (PENDING/RESERVED). Releasing stock back to inventory...`);
+
+  for (const order of expiredOrders) {
+    await failOrder(order.id, 'EXPIRED');
+  }
+};
+
 module.exports = {
   getAllOrders,
   getOrderById,
@@ -264,5 +327,8 @@ module.exports = {
   updateOrderStatus,
   finalizeOrderPayment,
   failOrder,
-  deleteOrder
+  deleteOrder,
+  reserveOrderForPayment,
+  releaseExpiredOrders,
+  getMyOrders
 };

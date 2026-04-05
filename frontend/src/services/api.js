@@ -87,8 +87,10 @@ export const AppApi = {
 
     // Orders
     placeOrder: (data) => apiCall('/orders', { method: 'POST', body: JSON.stringify(data) }),
-    getOrders: () => apiCall('/orders', { method: 'GET' }),
+    getOrders: () => apiCall('/orders', { method: 'GET' }), // Admin call
+    getMyOrders: () => apiCall('/orders/my', { method: 'GET' }), // Private user call
     getOrderById: (id) => apiCall(`/orders/${id}`, { method: 'GET' }),
+    updateOrderStatus: (id, status) => apiCall(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
     // Payments
     createPaymentUrl: (orderId) => apiCall('/payments/create', { method: 'POST', body: JSON.stringify({ orderId }) }),

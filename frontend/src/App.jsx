@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, LogOut, Package, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, LogOut, Package, ShieldCheck, ClipboardList, ListOrdered } from 'lucide-react';
 import Catalog from './pages/Catalog';
 import ProductDetail from './pages/ProductDetail';
 import AuthParams from './pages/Auth';
@@ -10,6 +10,9 @@ import Checkout from './pages/Checkout';
 import CartPage from './pages/Cart';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentFailed from './pages/PaymentFailed';
+import OrderHistory from './pages/OrderHistory';
+import OrderDetail from './pages/OrderDetail';
+import AdminOrders from './pages/admin/AdminOrders';
 import AccessDenied from './pages/AccessDenied';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -43,6 +46,9 @@ const Navbar = () => {
               <Link to="/admin/products" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', padding: '6px 12px', borderRadius: '20px', textDecoration: 'none' }}>
                 <Package size={16} /> Nhập Kho
               </Link>
+              <Link to="/admin/orders" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '20px', textDecoration: 'none' }}>
+                <ClipboardList size={16} /> Đơn Hàng
+              </Link>
             </div>
           )}
         </div>
@@ -50,19 +56,26 @@ const Navbar = () => {
           <Link to="/" className="btn-secondary" style={{ border: 'none', padding: '8px' }} title="Trang Chủ">
             <Package size={20} />
           </Link>
-          <Link
-            to="/cart"
-            className="btn-secondary"
-            style={{ border: 'none', padding: '8px', position: 'relative' }}
-            title="Giỏ Hàng"
-          >
-            <ShoppingCart size={20} />
-            {cartCount > 0 && (
-              <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ef4444', color: 'white', fontSize: '10px', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                {cartCount}
-              </span>
-            )}
-          </Link>
+          {user?.role !== 'ADMIN' && (
+            <Link
+              to="/cart"
+              className="btn-secondary"
+              style={{ border: 'none', padding: '8px', position: 'relative' }}
+              title="Giỏ Hàng"
+            >
+              <ShoppingCart size={20} />
+              {cartCount > 0 && (
+                <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ef4444', color: 'white', fontSize: '10px', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          )}
+          {user && user.role !== 'ADMIN' && (
+            <Link to="/my-orders" className="btn-secondary" style={{ border: 'none', padding: '8px' }} title="Đơn Hàng Của Tôi">
+              <ListOrdered size={20} />
+            </Link>
+          )}
           {user ? (
             <button onClick={handleLogout} className="btn-secondary" style={{ border: 'none', padding: '8px', color: '#ef4444' }} title="Đăng Xuất">
               <LogOut size={20} />
@@ -94,11 +107,14 @@ function App() {
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/payment-failed" element={<PaymentFailed />} />
+                <Route path="/my-orders" element={<OrderHistory />} />
+                <Route path="/orders/:id" element={<OrderDetail />} />
 
                 {/* Admin Protected Routes */}
                 <Route element={<AdminRoute />}>
                   <Route path="/admin/categories" element={<CategoryPage />} />
                   <Route path="/admin/products" element={<ProductPage />} />
+                  <Route path="/admin/orders" element={<AdminOrders />} />
                 </Route>
 
               </Routes>
@@ -109,5 +125,6 @@ function App() {
     </AuthProvider>
   );
 }
+
 
 export default App;

@@ -36,16 +36,6 @@ const Auth = () => {
             }
         } catch (err) {
             toast.error(err.message || 'Thiết lập thất bại. Vui lòng kiểm tra lại thông tin đã cung cấp.', "Quyền truy cập bị từ chối");
-
-            setTimeout(() => {
-                if (isLogin) {
-                    // If the mock email contains "admin", use ADMIN role for demo testing RBAC.
-                    const demoRole = formData.email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER';
-                    login('mock_token_123', { fullName: 'Người dùng chạy Demo', role: demoRole });
-                    toast.warning(`Hành động đang tiếp tục dưới cơ sở API Offline. Quyền: ${demoRole}`);
-                    window.location.href = '/';
-                }
-            }, 1000);
         } finally {
             setLoading(false);
         }

@@ -51,7 +51,19 @@ const createVnpayUrl = async (orderId, ipAddr) => {
   });
 
   if (!order) throw new Error('Order not found');
-  if (order.status !== 'PENDING') throw new Error('Chỉ có thể thanh toán đơn hàng đang chờ (PENDING)');
+
+  // Expiration check
+  if (order.expiresAt && order.expiresAt < new Date()) {
+    await orderService.failOrder(orderId);
+    throw new Error('Đơn hàng đã hết hạn thanh toán (10 phút). Vui lòng đặt hàng lại.');
+  }
+
+  if (order.status !== 'PENDING' && order.status !== 'RESERVED') {
+    throw new Error('Chỉ có thể thanh toán đơn hàng đang chờ hoặc đang giữ chỗ (PENDING/RESERVED)');
+  }
+
+  // Update order to RESERVED with new expiration time (10 minutes)
+  await orderService.reserveOrderForPayment(orderId);
 
   const date = new Date();
   const createDate = formatDate(date);

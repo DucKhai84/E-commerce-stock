@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AppApi } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useCart } from '../context/CartContext';
@@ -7,6 +7,7 @@ import ReviewSection from '../components/ReviewSection';
 
 const ProductDetail = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const toast = useToast();
     const { addToCart } = useCart();
     const [product, setProduct] = useState(null);
@@ -34,6 +35,17 @@ const ProductDetail = () => {
                 toast.success("Sản phẩm đã được đẩy vào giỏ hàng của bạn.", "Thêm thành công");
             } catch (err) {
                 toast.error(err.message || "Không thể thêm vào giỏ hàng.");
+            }
+        }
+    };
+
+    const handleBuyNow = async () => {
+        if (product) {
+            try {
+                await addToCart(product);
+                navigate('/checkout');
+            } catch (err) {
+                toast.error(err.message || "Lỗi khi xử lý mua nhanh.");
             }
         }
     };
@@ -88,9 +100,12 @@ const ProductDetail = () => {
                         {product.description}
                     </p>
 
-                    <div style={{ display: 'flex', gap: '16px', marginBottom: '40px' }}>
-                        <button className="btn-primary" style={{ padding: '14px 32px', fontSize: '16px' }} onClick={handleAddToCart}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '40px' }}>
+                        <button className="btn-secondary" style={{ padding: '14px 32px', fontSize: '16px' }} onClick={handleAddToCart}>
                             Bỏ Vào Giỏ
+                        </button>
+                        <button className="btn-primary" style={{ padding: '14px 32px', fontSize: '16px' }} onClick={handleBuyNow}>
+                            Mua Ngay
                         </button>
                         <div style={{ padding: '14px 20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                             Tồn kho: {product.stock}
