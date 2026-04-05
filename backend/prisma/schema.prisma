@@ -91,7 +91,8 @@ model Order {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   userId      String   @db.ObjectId
   totalAmount Float
-  status      String   @default("PENDING") // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  status      String   @default("PENDING") // PENDING, RESERVED, PAID, FAILED, CANCELLED
+  expiresAt   DateTime? 
   createdAt   DateTime @default(now())
 
   // Relations

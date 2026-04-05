@@ -6,6 +6,6 @@ const authMiddleware = require('../middlewares/auth.middleware');
 router.post('/create', authMiddleware, paymentController.createVnpayUrl);
 router.get('/vnpay-return', paymentController.vnpayReturn); // Public callback
 router.get('/:orderId', authMiddleware, paymentController.getPaymentByOrderId);
-router.put('/:orderId/status', authMiddleware, paymentController.updatePaymentStatus);
+router.patch('/:orderId/status', authMiddleware, paymentController.updatePaymentStatus);
 
 module.exports = router;
