@@ -88,6 +88,10 @@ export const AppApi = {
     // Orders
     placeOrder: (data) => apiCall('/orders', { method: 'POST', body: JSON.stringify(data) }),
     getOrders: () => apiCall('/orders', { method: 'GET' }),
+    getOrderById: (id) => apiCall(`/orders/${id}`, { method: 'GET' }),
+
+    // Payments
+    createPaymentUrl: (orderId) => apiCall('/payments/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
 
     // Cart
     getCart: () => apiCall('/cart', { method: 'GET' }),

@@ -161,6 +161,39 @@ const updateOrderStatus = async (id, status) => {
   });
 };
 
+const failOrder = async (orderId) => {
+  return await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { orderItems: true }
+    });
+
+    if (!order || order.status === 'FAILED') return order;
+
+    // Rollback stock
+    for (const item of order.orderItems) {
+      // Re-increment Physical Stock in Product
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } }
+      });
+
+      // Re-increment Physical Quantity in Inventory
+      await tx.inventory.update({
+        where: { productId: item.productId },
+        data: {
+          quantity: { increment: item.quantity }
+        }
+      });
+    }
+
+    return await tx.order.update({
+      where: { id: orderId },
+      data: { status: 'FAILED' }
+    });
+  });
+};
+
 const deleteOrder = async (id, requestingUser) => {
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order) throw new Error('Order not found');
@@ -184,5 +217,6 @@ module.exports = {
   getOrderById,
   createOrder,
   updateOrderStatus,
+  failOrder,
   deleteOrder
 };

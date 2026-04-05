@@ -27,10 +27,14 @@ const ProductDetail = () => {
         fetchProduct();
     }, [fetchProduct]);
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
         if (product) {
-            addToCart(product);
-            toast.success("Sản phẩm đã được đẩy vào giỏ hàng của bạn.", "Thêm thành công");
+            try {
+                await addToCart(product);
+                toast.success("Sản phẩm đã được đẩy vào giỏ hàng của bạn.", "Thêm thành công");
+            } catch (err) {
+                toast.error(err.message || "Không thể thêm vào giỏ hàng.");
+            }
         }
     };
 

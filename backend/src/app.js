@@ -36,7 +36,7 @@ app.use('/api/v1/inventory', authMiddleware, inventoryRoutes);
 app.use('/api/v1/messages', authMiddleware, messageRoutes);
 app.use('/api/v1/cart', authMiddleware, cartRoutes);
 app.use('/api/v1/addresses', authMiddleware, addressRoutes);
-app.use('/api/v1/payments', authMiddleware, paymentRoutes);
+app.use('/api/v1/payments', paymentRoutes); // Authentication handled per-route in paymentRoutes.js
 
 // Basic health check route
 app.get('/', (req, res) => {
