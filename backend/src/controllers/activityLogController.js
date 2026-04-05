@@ -20,7 +20,27 @@ const getLogById = async (req, res) => {
     }
 };
 
+const deleteLog = async (req, res) => {
+    try {
+        await activityLogService.deleteLog(req.params.id);
+        res.status(200).json({ message: 'Log entry deleted successfully' });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+const clearLogs = async (req, res) => {
+    try {
+        await activityLogService.clearLogs();
+        res.status(200).json({ message: 'All logs cleared successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getAllLogs,
-    getLogById
+    getLogById,
+    deleteLog,
+    clearLogs
 };

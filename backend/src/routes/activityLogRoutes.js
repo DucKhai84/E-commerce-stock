@@ -9,5 +9,7 @@ router.use(authMiddleware, roleMiddleware(['ADMIN']));
 
 router.get('/', activityLogController.getAllLogs);
 router.get('/:id', activityLogController.getLogById);
+router.delete('/', activityLogController.clearLogs);
+router.delete('/:id', activityLogController.deleteLog);
 
 module.exports = router;

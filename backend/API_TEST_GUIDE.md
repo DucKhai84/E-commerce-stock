@@ -107,8 +107,11 @@ This guide contains EVERY endpoint available in the system, organized by resourc
 ### Update Payment Status (Admin Only)
 - **PUT /payments/:orderId/status**
 ```json
-{ "status": "COMPLETED" }
-```
+### Get All Payments (Admin Only)
+- **GET /payments**
+
+### Delete Payment Record (Admin Only)
+- **DELETE /payments/:orderId**
 
 ---
 
@@ -180,6 +183,10 @@ This guide contains EVERY endpoint available in the system, organized by resourc
 - **GET /activity-logs** (Supports query: `?userId=...&action=...&page=1&limit=50`)
 ### View Log Detail
 - **GET /activity-logs/:id**
+### Delete Log Entry
+- **DELETE /activity-logs/:id**
+### Clear All Logs (Clean up)
+- **DELETE /activity-logs**
 
 ---
 
