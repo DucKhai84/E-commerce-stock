@@ -8,6 +8,8 @@ import CategoryPage from './pages/CategoryPage';
 import ProductPage from './pages/ProductPage';
 import Checkout from './pages/Checkout';
 import CartPage from './pages/Cart';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailed from './pages/PaymentFailed';
 import AccessDenied from './pages/AccessDenied';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -90,6 +92,8 @@ function App() {
                 <Route path="/403" element={<AccessDenied />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/payment-failed" element={<PaymentFailed />} />
 
                 {/* Admin Protected Routes */}
                 <Route element={<AdminRoute />}>

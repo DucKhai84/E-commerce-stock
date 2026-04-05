@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
+const authMiddleware = require('../middlewares/auth.middleware');
 
-router.get('/:orderId', paymentController.getPaymentByOrderId);
-router.put('/:orderId/status', paymentController.updatePaymentStatus);
+router.post('/create', authMiddleware, paymentController.createVnpayUrl);
+router.get('/vnpay-return', paymentController.vnpayReturn); // Public callback
+router.get('/:orderId', authMiddleware, paymentController.getPaymentByOrderId);
+router.put('/:orderId/status', authMiddleware, paymentController.updatePaymentStatus);
 
 module.exports = router;

@@ -23,6 +23,7 @@ const Checkout = () => {
         ward: ''
     });
     const [isAddingAddress, setIsAddingAddress] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('COD'); // Default COD
 
     useEffect(() => {
         fetchAddresses();
@@ -86,7 +87,7 @@ const Checkout = () => {
         setIsPlacingOrder(true);
         try {
             const orderData = {
-                paymentMethod: 'COD',
+                paymentMethod: paymentMethod,
                 addressId: selectedAddressId,
                 orderItems: cart.map(item => ({
                     productId: item.id,
@@ -95,18 +96,27 @@ const Checkout = () => {
                 }))
             };
 
-            await AppApi.placeOrder(orderData);
+            const order = await AppApi.placeOrder(orderData);
 
-            // Re-fetch cart isn't strictly necessary as clearCart handles it, 
-            // but clearCart is better here
+            if (paymentMethod === 'VNPAY') {
+                toast.info("Đang khởi tạo kết nối an toàn đến cổng thanh toán VNPAY...", "Chuyển hướng");
+                const { paymentUrl } = await AppApi.createPaymentUrl(order.id);
+
+                // Clear cart before redirecting
+                clearCart();
+
+                // Redirect to VNPAY
+                window.location.href = paymentUrl;
+                return;
+            }
+
+            // Normal COD flow
             clearCart();
-
             toast.success(
-                "Đơn hàng đã được ghi nhận. Sản phẩm của bạn được giữ trong kho 10 phút để chờ thanh toán.",
+                "Đơn hàng đã được ghi nhận. Chúng tôi sẽ sớm giao hàng đến bạn.",
                 "Đặt hàng thành công"
             );
 
-            // Redirect to Home as per requirement
             setTimeout(() => navigate('/'), 2000);
         } catch (err) {
             toast.error(err.message || "Gặp lỗi khi xử lý đặt hàng. Vui lòng thử lại sau.", "Lỗi thanh toán");
@@ -195,9 +205,34 @@ const Checkout = () => {
                             <h2 style={{ fontSize: '20px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                 <CreditCard size={20} color="var(--accent)" /> Phương Thức Thanh Toán
                             </h2>
-                            <div className="glass-panel active-address" style={{ padding: '16px', borderColor: 'var(--accent)', borderWidth: '2px' }}>
-                                <p style={{ fontWeight: '500' }}>Thanh toán khi nhận hàng (COD)</p>
-                                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Thanh toán bằng tiền mặt ngay khi đơn hàng được giao đến bạn.</p>
+                            <div style={{ display: 'grid', gap: '12px' }}>
+                                <div
+                                    onClick={() => setPaymentMethod('COD')}
+                                    className={`glass-panel ${paymentMethod === 'COD' ? 'active-address' : ''}`}
+                                    style={{ padding: '16px', cursor: 'pointer', borderWidth: '2px', borderColor: paymentMethod === 'COD' ? 'var(--accent)' : 'transparent' }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <input type="radio" checked={paymentMethod === 'COD'} readOnly />
+                                        <div>
+                                            <p style={{ fontWeight: '500' }}>Thanh toán khi nhận hàng (COD)</p>
+                                            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Thanh toán bằng tiền mặt ngay khi đơn hàng được giao đến bạn.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    onClick={() => setPaymentMethod('VNPAY')}
+                                    className={`glass-panel ${paymentMethod === 'VNPAY' ? 'active-address' : ''}`}
+                                    style={{ padding: '16px', cursor: 'pointer', borderWidth: '2px', borderColor: paymentMethod === 'VNPAY' ? 'var(--accent)' : 'transparent' }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <input type="radio" checked={paymentMethod === 'VNPAY'} readOnly />
+                                        <div>
+                                            <p style={{ fontWeight: '500', color: '#ff9800' }}>Ví VNPAY / Thẻ Ngân Hàng</p>
+                                            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Thanh toán an toàn qua cổng VNPAY (ATM, Visa, Master, QR).</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
