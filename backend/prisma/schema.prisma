@@ -23,6 +23,8 @@ model User {
   cart             Cart?
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+  wishlist         Wishlist[]
+  activityLogs     ActivityLog[]
 }
 
 type MessageContent {
@@ -63,7 +65,11 @@ model Product {
   inventory  Inventory?
   orderItems OrderItem[]
   cartItems  CartItem[]
-  reviews    Review[]
+  reviews      Review[]
+  images       ProductImage[]
+  wishlistedBy Wishlist[]
+  brandId      String?        @db.ObjectId
+  brand        Brand?         @relation(fields: [brandId], references: [id])
 }
 
 model Category {
@@ -171,4 +177,45 @@ model Review {
   // Relations
   user    User    @relation(fields: [userId], references: [id])
   product Product @relation(fields: [productId], references: [id])
+}
+
+// 🏢 Model Thương hiệu sản phẩm
+model Brand {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String    @unique
+  logoUrl     String?
+  description String?
+  products    Product[]
+}
+
+// 🖼️ Model Bộ sưu tập ảnh sản phẩm
+model ProductImage {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  productId String  @db.ObjectId
+  url       String
+  isMain    Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ❤️ Model Sản phẩm yêu thích (Wishlist)
+model Wishlist {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  productId String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// 📜 Model Nhật ký hoạt động (Audit Logs)
+model ActivityLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }

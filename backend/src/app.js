@@ -11,6 +11,10 @@ const cartRoutes = require('./routes/cartRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const brandRoutes = require('./routes/brandRoutes');
+const productImageRoutes = require('./routes/productImageRoutes');
+const wishlistRoutes = require('./routes/wishlistRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 const authMiddleware = require('./middlewares/auth.middleware');
 const path = require('path');
 
@@ -37,6 +41,10 @@ app.use('/api/v1/messages', authMiddleware, messageRoutes);
 app.use('/api/v1/cart', authMiddleware, cartRoutes);
 app.use('/api/v1/addresses', authMiddleware, addressRoutes);
 app.use('/api/v1/payments', paymentRoutes); // Authentication handled per-route in paymentRoutes.js
+app.use('/api/v1/brands', brandRoutes);
+app.use('/api/v1/products/:productId/images', productImageRoutes);
+app.use('/api/v1/wishlist', authMiddleware, wishlistRoutes);
+app.use('/api/v1/activity-logs', authMiddleware, activityLogRoutes);
 
 // Basic health check route
 app.get('/', (req, res) => {

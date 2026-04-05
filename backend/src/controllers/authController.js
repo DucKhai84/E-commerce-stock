@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const activityLogService = require('../services/activityLogService');
 
 const register = async (req, res) => {
   try {
@@ -16,6 +17,14 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const { token, user } = await authService.login(email, password);
+
+    // Auto-log login
+    await activityLogService.createLog({
+      userId: user.id,
+      action: 'LOGIN',
+      details: `User ${user.email} logged in successfully`
+    });
+
     res.status(200).json({
       message: 'Login successful',
       token,
