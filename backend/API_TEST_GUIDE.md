@@ -137,6 +137,50 @@ This guide contains EVERY endpoint available in the system, organized by resourc
 - **GET /users** (Admin Only - List all)
 - **GET /users/:id** (Self/Admin - Profile)
 
+## 🏷️ 9. Brands (Thương hiệu)
+### Get All Brands
+- **GET /brands**
+### Create Brand (Admin Only)
+- **POST /brands**
+```json
+{
+  "name": "Apple",
+  "description": "Premium electronics brand"
+}
+```
+
+---
+
+## 🖼️ 10. Product Gallery (Ảnh sản phẩm)
+### Add Image (Admin Only)
+- **POST /products/:productId/images**
+```json
+{
+  "url": "/uploads/products/image1.jpg",
+  "isMain": true
+}
+```
+### Get All Product Images
+- **GET /products/:productId/images**
+
+---
+
+## ❤️ 11. Wishlist (Sản phẩm yêu thích)
+### Add to Wishlist
+- **POST /wishlist** (JSON: `{"productId": "PROD_ID"}`)
+### View My Wishlist
+- **GET /wishlist**
+### Remove from Wishlist
+- **DELETE /wishlist/:productId**
+
+---
+
+## 📜 12. Activity Logs (Admin Only)
+### View All Logs
+- **GET /activity-logs** (Supports query: `?userId=...&action=...&page=1&limit=50`)
+### View Log Detail
+- **GET /activity-logs/:id**
+
 ---
 
 ## 🛡️ Business Rules (Quick Reference)

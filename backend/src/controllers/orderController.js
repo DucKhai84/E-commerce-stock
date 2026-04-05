@@ -1,4 +1,5 @@
 const orderService = require('../services/orderService');
+const activityLogService = require('../services/activityLogService');
 
 const getAllOrders = async (req, res) => {
   try {
@@ -32,6 +33,14 @@ const getOrderById = async (req, res) => {
 const createOrder = async (req, res) => {
   try {
     const order = await orderService.createOrder(req.body, req.user);
+
+    // Auto-log order creation
+    await activityLogService.createLog({
+      userId: req.user.userId,
+      action: 'CREATE_ORDER',
+      details: `Created order ID: ${order.id}, totalAmount: ${order.totalAmount}`
+    });
+
     res.status(201).json(order);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -41,6 +50,14 @@ const createOrder = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const order = await orderService.updateOrderStatus(req.params.id, req.body.status);
+
+    // Auto-log order status update
+    await activityLogService.createLog({
+      userId: req.user.userId,
+      action: 'UPDATE_ORDER_STATUS',
+      details: `Updated order ID: ${req.params.id} to status: ${req.body.status}`
+    });
+
     res.status(200).json(order);
   } catch (error) {
     res.status(400).json({ message: error.message });
