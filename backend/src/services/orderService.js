@@ -127,22 +127,31 @@ const createOrder = async (orderData, requestingUser) => {
       }
     });
 
-    // 4. Finalize Stock: Physical Reduction
-    for (const item of orderItems) {
-      // Reduce Physical Stock in Product
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } }
-      });
+    // 4. Stock Management
+    if (paymentMethod === 'COD') {
+      // For COD, we reduce physical stock immediately
+      for (const item of orderItems) {
+        // Reduce Physical Stock in Product
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } }
+        });
 
-      // Reduce Physical Quantity and Release Reserved in Inventory
-      await tx.inventory.update({
-        where: { productId: item.productId },
-        data: {
-          quantity: { decrement: item.quantity }, // Permanent reduction
-          reserved: { decrement: item.quantity }  // Release hold
-        }
-      });
+        // Reduce Physical Quantity and Release Reserved in Inventory
+        await tx.inventory.update({
+          where: { productId: item.productId },
+          data: {
+            quantity: { decrement: item.quantity }, // Permanent reduction
+            reserved: { decrement: item.quantity }  // Release hold
+          }
+        });
+      }
+    } else {
+      // For VNPAY/Online: We DO NOT reduce physical quantity yet.
+      // We keep the stock 'reserved' until payment success or failure.
+      // Since cartItem is about to be deleted, the inventory.reserved count 
+      // already includes these items (added during addToCart).
+      console.log(`[OrderService] VNPAY order ${order.id}: Keeping stock reserved until payment.`);
     }
 
     // 5. Clear the user's reserved items
@@ -161,30 +170,66 @@ const updateOrderStatus = async (id, status) => {
   });
 };
 
-const failOrder = async (orderId) => {
+const finalizeOrderPayment = async (orderId) => {
   return await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: { orderItems: true }
     });
 
-    if (!order || order.status === 'FAILED') return order;
+    if (!order || order.status === 'PAID') return order;
 
-    // Rollback stock
+    // Finalize Stock: Reduce Physical Quantity and Release Reserved
     for (const item of order.orderItems) {
-      // Re-increment Physical Stock in Product
+      // Reduce Physical Stock in Product
       await tx.product.update({
         where: { id: item.productId },
-        data: { stock: { increment: item.quantity } }
+        data: { stock: { decrement: item.quantity } }
       });
 
-      // Re-increment Physical Quantity in Inventory
+      // Reduce Physical Quantity and Release Reserved in Inventory
       await tx.inventory.update({
         where: { productId: item.productId },
         data: {
-          quantity: { increment: item.quantity }
+          quantity: { decrement: item.quantity }, // Permanent reduction
+          reserved: { decrement: item.quantity }  // Release hold
         }
       });
+    }
+
+    return await tx.order.update({
+      where: { id: orderId },
+      data: { status: 'PAID' }
+    });
+  });
+};
+
+const failOrder = async (orderId) => {
+  return await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { orderItems: true, payment: true }
+    });
+
+    if (!order || order.status === 'FAILED') return order;
+
+    // For VNPAY/Online: If payment failed, we ONLY release the reserved stock.
+    // (Because physical quantity wasn't reduced yet in createOrder for VNPAY).
+    // EXCEPT if it was COD (but COD usually doesn't fail this way).
+
+    if (order.payment?.method !== 'COD') {
+      for (const item of order.orderItems) {
+        await tx.inventory.update({
+          where: { productId: item.productId },
+          data: { reserved: { decrement: item.quantity } }
+        });
+      }
+    } else {
+      // Rollback COD (Rarely used in this flow but kept for safety)
+      for (const item of order.orderItems) {
+        await tx.product.update({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
+        await tx.inventory.update({ where: { productId: item.productId }, data: { quantity: { increment: item.quantity }, reserved: { increment: item.quantity } } });
+      }
     }
 
     return await tx.order.update({
@@ -217,6 +262,7 @@ module.exports = {
   getOrderById,
   createOrder,
   updateOrderStatus,
+  finalizeOrderPayment,
   failOrder,
   deleteOrder
 };

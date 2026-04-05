@@ -3,11 +3,12 @@ const crypto = require('crypto');
 const orderService = require('./orderService');
 
 // VNPAY Configuration
-const VNP_TMN_CODE = process.env.VNP_TMN_CODE;
-const VNP_HASH_SECRET = process.env.VNP_HASH_SECRET;
-const VNP_URL = process.env.VNP_URL;
-const VNP_RETURN_URL = process.env.VNP_RETURN_URL;
-const FRONTEND_URL = process.env.FRONTEND_URL;
+// VNPAY Configuration - Sanitized
+const VNP_TMN_CODE = (process.env.VNP_TMN_CODE || '').trim().replace(/['"]/g, '');
+const VNP_HASH_SECRET = (process.env.VNP_HASH_SECRET || '').trim().replace(/['"]/g, '');
+const VNP_URL = (process.env.VNP_URL || '').trim().replace(/['"]/g, '');
+const VNP_RETURN_URL = (process.env.VNP_RETURN_URL || '').trim().replace(/['"]/g, '');
+const FRONTEND_URL = (process.env.FRONTEND_URL || '').trim().replace(/['"]/g, '');
 
 const getPaymentByOrderId = async (orderId, requestingUser) => {
   const payment = await prisma.payment.findUnique({
@@ -67,24 +68,38 @@ const createVnpayUrl = async (orderId, ipAddr) => {
   vnp_Params['vnp_Locale'] = 'vn';
   vnp_Params['vnp_CurrCode'] = 'VND';
   vnp_Params['vnp_TxnRef'] = order.id;
-  vnp_Params['vnp_OrderInfo'] = `Thanh toán đơn hàng: ${order.id}`;
-  vnp_Params['vnp_OrderType'] = 'other';
-  vnp_Params['vnp_Amount'] = order.totalAmount * 100;
+  vnp_Params['vnp_OrderInfo'] = 'Thanh toan don hang ' + order.id;
+  vnp_Params['vnp_OrderType'] = 'billpayment';
+  vnp_Params['vnp_Amount'] = Math.round(order.totalAmount * 100);
   vnp_Params['vnp_ReturnUrl'] = returnUrl;
-  vnp_Params['vnp_IpAddr'] = ipAddr;
+  vnp_Params['vnp_IpAddr'] = ipAddr.trim();
   vnp_Params['vnp_CreateDate'] = createDate;
 
-  // Sort objects by key alphabetically
-  vnp_Params = sortObject(vnp_Params);
+  // 2. Sort and build signData (ENCODED for 2.1.0)
+  let sortedKeys = Object.keys(vnp_Params).sort();
+  let signData = "";
 
-  const signData = new URLSearchParams(vnp_Params).toString().replace(/\+/g, "%20");
+  for (let i = 0; i < sortedKeys.length; i++) {
+    let key = sortedKeys[i];
+    let val = vnp_Params[key];
+
+    if (val !== undefined && val !== null && val !== "") {
+      if (signData.length > 0) signData += "&";
+      // Official 2.1.0: Both the hash and the URL use ENCODED values.
+      signData += encodeURIComponent(key) + "=" + encodeURIComponent(val).replace(/%20/g, "+");
+    }
+  }
+
+  // 3. Generate Secure Hash (HMAC SHA512)
   const hmac = crypto.createHmac("sha512", secretKey);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
-  vnp_Params['vnp_SecureHash'] = signed;
 
-  const finalUrl = vnpUrl + '?' + new URLSearchParams(vnp_Params).toString();
+  // 4. Final URL
+  const finalUrl = vnpUrl + "?" + signData + "&vnp_SecureHash=" + signed;
 
-  console.log(`[PaymentService] Generated VNPAY URL for Order: ${orderId}`);
+  console.log(`[PaymentService] Creation Sign Data (Encoded): ${signData}`);
+  console.log(`[PaymentService] Generated VNPAY URL: ${finalUrl}`);
+
   return finalUrl;
 };
 
@@ -94,30 +109,46 @@ const vnpayReturn = async (vnp_Params) => {
   delete vnp_Params['vnp_SecureHash'];
   delete vnp_Params['vnp_SecureHashType'];
 
-  const sortedParams = sortObject(vnp_Params);
   const secretKey = VNP_HASH_SECRET;
+  const orderId = vnp_Params['vnp_TxnRef'];
 
-  const signData = new URLSearchParams(sortedParams).toString().replace(/\+/g, "%20");
+  // 1. Filter and sort parameters (EXCLUDE ALL NON-vnp_ OR SIGNATURE KEYS)
+  const sortedKeys = Object.keys(vnp_Params)
+    .filter(key => key.startsWith('vnp_') && key !== 'vnp_SecureHash' && key !== 'vnp_SecureHashType')
+    .sort();
+
+  let signData = "";
+  for (let i = 0; i < sortedKeys.length; i++) {
+    let key = sortedKeys[i];
+    let val = vnp_Params[key];
+    if (val !== undefined && val !== null && val !== "") {
+      if (signData.length > 0) signData += "&";
+      // Callbacks ALSO need to be encoded to match the signature
+      signData += encodeURIComponent(key) + "=" + encodeURIComponent(val).replace(/%20/g, "+");
+    }
+  }
+
   const hmac = crypto.createHmac("sha512", secretKey);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-  const orderId = vnp_Params['vnp_TxnRef'];
+  console.log(`[PaymentService] Callback Sign Data (Encoded): ${signData}`);
+  console.log(`[PaymentService] Callback Checksum: ${signed === secureHash ? 'Match' : 'Mismatch'}`);
+  console.log(`[PaymentService] Received Hash: ${secureHash}, Calculated Hash: ${signed}`);
+
 
   if (secureHash === signed) {
     const responseCode = vnp_Params['vnp_ResponseCode'];
+    console.log(`[PaymentService] VNPAY Response Code: ${responseCode} for Order: ${orderId}`);
 
     if (responseCode === "00") {
-      // Payment SUCCESS
-      await prisma.$transaction([
-        prisma.order.update({
-          where: { id: orderId },
-          data: { status: 'PAID' }
-        }),
-        prisma.payment.update({
-          where: { orderId: orderId },
-          data: { status: 'COMPLETED' }
-        })
-      ]);
+      // Payment SUCCESS: High-level finalization includes status + stock
+      await orderService.finalizeOrderPayment(orderId);
+
+      // Update payment record separately
+      await prisma.payment.update({
+        where: { orderId: orderId },
+        data: { status: 'COMPLETED' }
+      });
       return `${FRONTEND_URL}/payment-success?orderId=${orderId}`;
     } else {
       // Payment FAILED

@@ -22,10 +22,14 @@ const updatePaymentStatus = async (req, res) => {
 const createVnpayUrl = async (req, res) => {
   try {
     const { orderId } = req.body;
-    const ipAddr = req.headers['x-forwarded-for'] ||
+    let ipAddr = req.headers['x-forwarded-for'] ||
       req.connection.remoteAddress ||
       req.socket.remoteAddress ||
       req.connection.socket.remoteAddress;
+
+    if (ipAddr === '::1') {
+      ipAddr = '127.0.0.1';
+    }
 
     const paymentUrl = await paymentService.createVnpayUrl(orderId, ipAddr);
     res.status(200).json({ paymentUrl });
